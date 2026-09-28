@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factorización QR - ABC</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#0b1f3a,#0b5cab);color:#fff;min-height:100vh}
+.wrap{max-width:900px;margin:auto;padding:22px}.card{background:#fff;color:#18212b;border-radius:20px;padding:24px;margin:15px 0;box-shadow:0 10px 30px #0004}
+h1,h2{margin-top:0}.center{text-align:center}.btn{border:0;border-radius:14px;padding:13px 18px;font-size:16px;font-weight:bold;cursor:pointer;margin:6px;background:#ffd21c;color:#18212b}.btn.blue{background:#1677ff;color:white}.btn.red{background:#e53935;color:white}.btn.gray{background:#e8edf3}.hidden{display:none}.option{display:block;width:100%;text-align:left;border:2px solid #d8dee7;background:#f7f9fc;border-radius:14px;padding:15px;margin:10px 0;font-size:17px;cursor:pointer}.option:hover{background:#eaf2ff}.tag{display:inline-block;background:#e9f3ff;color:#0758ad;border-radius:20px;padding:6px 10px;margin:3px;font-size:13px}.msg{padding:12px;border-radius:12px;margin:12px 0;font-weight:bold}.ok{background:#d9f7df;color:#126124}.bad{background:#ffe0e0;color:#9b111e}.hint{background:#fff7c7;color:#5d4b00;padding:15px;border-radius:14px}.field{width:100%;padding:12px;border:2px solid #d5dbe3;border-radius:10px;margin:7px 0;font-size:16px}.levelbox{border-left:6px solid #1677ff;padding-left:14px}.small{font-size:13px;color:#667085}.adminrow{border:1px solid #ddd;border-radius:12px;padding:14px;margin:10px 0;background:#fafafa}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div id="home" class="card center">
+<h1>🧩 Factorización QR</h1>
+<p>Elige cómo vas a entrar:</p>
+<button class="btn blue" onclick="show('adminLogin')">🔐 Administrador</button>
+<button class="btn" onclick="show('playerLogin')">🎮 Jugador</button>
+<p class="small">El administrador puede editar el juego. Los jugadores no pueden entrar al editor.</p>
+</div>
+
+<div id="adminLogin" class="card hidden">
+<h2>🔐 Entrada de Administrador</h2>
+<input id="adminPass" class="field" type="password" placeholder="Contraseña especial">
+<button class="btn blue" onclick="adminEnter()">Entrar</button>
+<button class="btn gray" onclick="backHome()">Volver</button>
+<div id="adminMsg"></div>
+</div>
+
+<div id="playerLogin" class="card hidden">
+<h2>🎮 Entrada de Jugador</h2>
+<p>Usa un nombre único y tu contraseña. <b>No necesitas correo.</b></p>
+<input id="playerName" class="field" placeholder="Nombre de jugador">
+<input id="playerPass" class="field" type="password" placeholder="Contraseña">
+<button class="btn" onclick="playerEnter()">Jugar / Registrarme</button>
+<button class="btn gray" onclick="backHome()">Volver</button>
+<div id="playerMsg"></div>
+</div>
+
+<div id="adminPanel" class="hidden">
+<div class="card">
+<h2>⚙️ Panel del Administrador</h2>
+<p>Aquí puedes cambiar las preguntas, respuestas, retos, pistas y códigos QR.</p>
+<button class="btn blue" onclick="saveGame()">💾 Guardar cambios</button>
+<button class="btn gray" onclick="backHome()">Salir</button>
+<div id="adminEditor"></div>
+</div>
+</div>
+
+<div id="game" class="hidden">
+<div class="card">
+<h2>🎮 Modo Jugador</h2>
+<p>Jugador: <b id="playerDisplay"></b></p>
+<div id="progress"></div>
+<button class="btn gray" onclick="backHome()">Salir</button>
+</div>
+<div id="gameCard" class="card"></div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL="https://yksnviqnpcoqpxnhrmwj.supabase.co";
+const SUPABASE_KEY="sb_publishable_2lqtMoUgzOJYdWQfiZvEUg_JzDfmrQj";
+const DEFAULT_PASS="1029965042";
+const defaultLevels=[
+{q:"6x² + 9x",type:"Factor común",a:["3x(2x+3)","6x(x+9)","3(2x²+3)"],correct:0,challenge:"7 × 8 = ?",challengeAns:"56",hint:"Busca el siguiente QR cerca de algo que tenga tres lados.",code:"FACTOR-QR-01-2026"},
+{q:"x² − 25",type:"Diferencia de cuadrados",a:["(x−5)(x+5)","(x−25)(x+1)","(x−5)²"],correct:0,challenge:"12 × 6 = ?",challengeAns:"72",hint:"Busca el siguiente QR donde se escriben las respuestas.",code:"FACTOR-QR-02-2026"},
+{q:"x² + 10x + 25",type:"Trinomio cuadrado perfecto",a:["(x+5)²","(x+10)(x+15)","(x−5)²"],correct:0,challenge:"15 + 27 = ?",challengeAns:"42",hint:"Busca el siguiente QR cerca de algo amarillo.",code:"FACTOR-QR-03-2026"},
+{q:"x² + 7x + 12",type:"Trinomio x²+bx+c",a:["(x+3)(x+4)","(x+2)(x+6)","(x−3)(x−4)"],correct:0,challenge:"9 × 9 = ?",challengeAns:"81",hint:"Busca el siguiente QR cerca de una puerta.",code:"FACTOR-QR-04-2026"},
+{q:"2x² + 7x + 3",type:"Trinomio ax²+bx+c",a:["(2x+1)(x+3)","(2x+3)(x+1)","(x+1)(x+6)"],correct:0,challenge:"100 − 37 = ?",challengeAns:"63",hint:"Busca el siguiente QR donde haya libros o cuadernos.",code:"FACTOR-QR-05-2026"},
+{q:"x³ + 8",type:"Suma de cubos",a:["(x+2)(x²−2x+4)","(x+2)(x²+2x+4)","(x−2)(x²+2x+4)"],correct:0,challenge:"6² = ?",challengeAns:"36",hint:"Busca el siguiente QR donde puedas ver un reflejo.",code:"FACTOR-QR-06-2026"},
+{q:"x³ − 27",type:"Diferencia de cubos",a:["(x−3)(x²+3x+9)","(x−3)(x²−3x+9)","(x+3)(x²+3x+9)"],correct:0,challenge:"144 ÷ 12 = ?",challengeAns:"12",hint:"Busca el siguiente QR cerca de algo que marque números.",code:"FACTOR-QR-07-2026"},
+{q:"3x² − 12x + 12",type:"Reto final",a:["3(x−2)²","3(x+2)²","(3x−2)²"],correct:0,challenge:"25 + 25 + 25 = ?",challengeAns:"75",hint:"🎉 ¡Terminaste la búsqueda!",code:"FACTOR-QR-08-2026"}
+];
+let levels=defaultLevels, current=0, player="", challengeMode=false, adminPassword=DEFAULT_PASS;
+async function sha256(v){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function rpc(name,body){const r=await fetch(SUPABASE_URL+"/rest/v1/rpc/"+name,{method:"POST",headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify(body)});const t=await r.text();if(!r.ok)throw new Error(t);return t?JSON.parse(t):null}
+async function loadLevels(){try{const d=await rpc("get_game_config",{});if(d&&Array.isArray(d.levels)&&d.levels.length)levels=d.levels}catch(e){console.warn(e)}}
+function hideAll(){document.querySelectorAll("#home,#adminLogin,#playerLogin,#adminPanel,#game").forEach(x=>x.classList.add("hidden"))}
+function show(id){hideAll();document.getElementById(id).classList.remove("hidden")}
+function backHome(){hideAll();document.getElementById("home").classList.remove("hidden")}
+async function adminEnter(){try{const h=await sha256(document.getElementById("adminPass").value);const d=await rpc("admin_get",{p_admin_password_hash:h});adminPassword=document.getElementById("adminPass").value;levels=d.levels&&d.levels.length?d.levels:levels;renderAdmin(d.players||[]);show("adminPanel")}catch(e){document.getElementById("adminMsg").innerHTML='<div class="msg bad">Contraseña incorrecta.</div>'}}
+async function playerEnter(){let n=document.getElementById("playerName").value.trim(),p=document.getElementById("playerPass").value;if(!n||!p){document.getElementById("playerMsg").innerHTML='<div class="msg bad">Escribe nombre y contraseña.</div>';return}try{const h=await sha256(p);const d=await rpc("player_enter",{p_username:n,p_password_hash:h});player=d.username;current=Number(d.level)||0;challengeMode=false;document.getElementById("playerDisplay").textContent=player;show("game");renderLevel()}catch(e){document.getElementById("playerMsg").innerHTML='<div class="msg bad">❌ Ese nombre ya está registrado con otra contraseña, o hubo un error de conexión.</div>'}}
+function renderLevel(){const l=levels[current];document.getElementById("progress").innerHTML=`<span class="tag">Nivel ${current+1}/${levels.length}</span><span class="tag">${l.type}</span>`;let html=`<div class="levelbox"><h2>Pregunta</h2><h2>${l.q}</h2>`;if(!challengeMode){html+=`<p>Elige la factorización correcta:</p>`;l.a.forEach((x,i)=>html+=`<button class="option" onclick="answer(${i})"><b>${String.fromCharCode(65+i)})</b> ${x}</button>`)}else html+=`<div class="msg bad">❌ Respuesta incorrecta. Primero supera este reto:</div><h2>${l.challenge}</h2><input id="challengeInput" class="field" placeholder="Tu respuesta"><button class="btn" onclick="solveChallenge()">Resolver reto</button>`;html+=`</div>`;document.getElementById("gameCard").innerHTML=html}
+function answer(i){if(i===levels[current].correct){document.getElementById("gameCard").innerHTML=`<div class="msg ok">✅ ¡Correcto!</div><div class="hint"><b>🔎 Pista:</b><br>${levels[current].hint}</div><p><b>🔢 CÓDIGO</b></p><p>Encuentra el código en el QR y escríbelo aquí:</p><input id="qrInput" class="field" placeholder="Escribe aquí el código que encontraste"><button class="btn blue" onclick="checkQR()">Comprobar código</button><div id="qrMsg"></div>`}else{challengeMode=true;renderLevel()}}
+function checkQR(){let v=document.getElementById("qrInput").value.trim();if(v===levels[current].code)document.getElementById("qrMsg").innerHTML='<div class="msg ok">✅ ¡Código correcto!</div><button class="btn blue" onclick="nextLevel()">➡️ Pasar al siguiente nivel</button>';else document.getElementById("qrMsg").innerHTML='<div class="msg bad">❌ Código incorrecto. Revisa el QR y vuelve a intentarlo.</div>'}
+function solveChallenge(){let v=document.getElementById("challengeInput").value.trim();if(v===levels[current].challengeAns){challengeMode=false;document.getElementById("gameCard").innerHTML='<div class="msg ok">🎯 ¡Reto superado! Ahora puedes intentar la pregunta otra vez.</div><button class="btn blue" onclick="renderLevel()">Intentar de nuevo</button>'}else document.getElementById("gameCard").insertAdjacentHTML("beforeend",'<div class="msg bad">❌ Todavía no. Inténtalo otra vez.</div>')}
+async function nextLevel(){const next=Math.min(current+1,levels.length-1);try{await rpc("player_progress",{p_username:player,p_level:next})}catch(e){}if(current<levels.length-1){current++;challengeMode=false;renderLevel()}else document.getElementById("gameCard").innerHTML='<div class="msg ok"><h2>🏆 ¡Búsqueda completada!</h2><p>¡Felicitaciones, '+player+'!</p></div>'}
+function renderAdmin(players){let h=`<h3>🔑 Contraseña de administrador</h3><input id="newPass" class="field" type="password" value=""><p class="small">Déjala vacía para conservar la actual.</p><h3>👥 Jugadores registrados</h3><div id="playersList">${players.length?players.map(p=>`<div class="adminrow"><b>${esc(p.username)}</b> — Nivel ${Number(p.level)+1}</div>`).join(""):'<p class="small">Todavía no hay jugadores.</p>'}</div><hr>`;levels.forEach((l,i)=>{h+=`<div class="adminrow"><h3>Nivel ${i+1}</h3><input class="field q" data-i="${i}" value="${esc(l.q)}" placeholder="Pregunta"><input class="field type" data-i="${i}" value="${esc(l.type)}" placeholder="Tipo de factorización"><input class="field a0" data-i="${i}" value="${esc(l.a[0])}" placeholder="Opción A"><input class="field a1" data-i="${i}" value="${esc(l.a[1])}" placeholder="Opción B"><input class="field a2" data-i="${i}" value="${esc(l.a[2])}" placeholder="Opción C"><select class="field cor" data-i="${i}"><option value="0" ${l.correct===0?"selected":""}>Correcta: A</option><option value="1" ${l.correct===1?"selected":""}>Correcta: B</option><option value="2" ${l.correct===2?"selected":""}>Correcta: C</option></select><input class="field ch" data-i="${i}" value="${esc(l.challenge)}" placeholder="Reto si se equivoca (editable)"><input class="field cha" data-i="${i}" value="${esc(l.challengeAns)}" placeholder="Respuesta/confirmación del reto"><input class="field hi" data-i="${i}" value="${esc(l.hint)}" placeholder="Pista"><input class="field co" data-i="${i}" value="${esc(l.code)}" placeholder="Código QR"></div>`});document.getElementById("adminEditor").innerHTML=h}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/\"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+async function saveGame(){document.querySelectorAll(".q").forEach(e=>levels[e.dataset.i].q=e.value);document.querySelectorAll(".type").forEach(e=>levels[e.dataset.i].type=e.value);document.querySelectorAll(".a0").forEach(e=>levels[e.dataset.i].a[0]=e.value);document.querySelectorAll(".a1").forEach(e=>levels[e.dataset.i].a[1]=e.value);document.querySelectorAll(".a2").forEach(e=>levels[e.dataset.i].a[2]=e.value);document.querySelectorAll(".cor").forEach(e=>levels[e.dataset.i].correct=Number(e.value));document.querySelectorAll(".ch").forEach(e=>levels[e.dataset.i].challenge=e.value);document.querySelectorAll(".cha").forEach(e=>levels[e.dataset.i].challengeAns=e.value);document.querySelectorAll(".hi").forEach(e=>levels[e.dataset.i].hint=e.value);document.querySelectorAll(".co").forEach(e=>levels[e.dataset.i].code=e.value);const np=document.getElementById("newPass").value.trim();try{const oldH=await sha256(adminPassword),newH=np?await sha256(np):"";await rpc("admin_save",{p_admin_password_hash:oldH,p_levels:levels,p_new_admin_password_hash:newH});if(np)adminPassword=np;alert("✅ Cambios guardados en línea.");const d=await rpc("admin_get",{p_admin_password_hash:await sha256(adminPassword)});renderAdmin(d.players||[])}catch(e){alert("No se pudieron guardar los cambios.")}}
+loadLevels();
+</script>
+</body>
+</html>
